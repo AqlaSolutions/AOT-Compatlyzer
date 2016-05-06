@@ -16,7 +16,7 @@ namespace AotCompatlyzer
 		public static int Verbosity = (int)Verbosities.Warning;
 
 		public static bool TraceMode = false;
-		public static bool PretendMode = true;
+		public static bool PretendMode = false;
 	}
 
 	class MainClass
@@ -40,7 +40,7 @@ namespace AotCompatlyzer
 			if(args.Length > 0)
 			{
 				IEnumerable<string> fileListArgs = args;
-				if(args[0].StartsWith ("-"))
+				if(args[0].StartsWith ("-", StringComparison.Ordinal))
 				{
 					int verb;
 					if(Int32.TryParse (args[0].Substring(1), out verb))

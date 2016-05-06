@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Mono.Cecil;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Mono.Cecil.Cil;
 
 namespace AotCompatlyzer
@@ -90,32 +91,41 @@ namespace AotCompatlyzer
 //				Console.WriteLine(typeof(Delegate).Module.FullyQualifiedName);
 		}
 
-		public void OnType(TypeDefinition type)
-		{
-			if(type.IsInterface)
-				return;
-			foreach(var method in type.Methods) 
+        [MethodImpl(MethodImplOptions.Synchronized)]
+        public void OnType(TypeDefinition type)
+        {
+            if (type.IsInterface)
+                return;
+            var syncCtr = type.Module.Import(typeof(MethodImplAttribute).GetConstructor(new[] { typeof(MethodImplOptions) }));
+            var syncEnum = type.Module.Import(typeof(MethodImplOptions));
+
+            foreach (var method in type.Methods) 
 			{
 				try 
 				{
 					string fieldName;
 					MethodReference methodR;
-					
-					#region Get required info or continue
-					
-					if(method.Name.StartsWith("add_")) {
-						fieldName = method.Name.Substring("add_".Length);
-						methodR = combineR;
-					} else if(method.Name.StartsWith("remove_")) {
-						fieldName = method.Name.Substring("remove_".Length);
-						methodR = removeR;
-					} else {
-						continue;
-					}
-					
-#endregion
-					
-					var newI = new List<Instruction>();
+
+                    #region Get required info or continue
+
+                    if (method.Name.StartsWith("add_", StringComparison.Ordinal))
+                    {
+                        fieldName = method.Name.Substring("add_".Length);
+                        methodR = combineR;
+                    }
+                    else if (method.Name.StartsWith("remove_", StringComparison.Ordinal))
+                    {
+                        fieldName = method.Name.Substring("remove_".Length);
+                        methodR = removeR;
+                    }
+                    else
+                    {
+                        continue;
+                    }
+
+                    #endregion
+
+                    var newI = new List<Instruction>();
 					
 					var processor = method.Body.GetILProcessor();
 					
@@ -203,10 +213,21 @@ namespace AotCompatlyzer
 					if(Verbosity >= Verbosities.Success) {
 						Console.WriteLine(" - replaced method: " + type.Name + "." + method.Name);
 					}
-					
-#endregion
-					
-				} catch(Exception ex) {
+
+                    #endregion
+
+
+                    var sA = method.CustomAttributes.FirstOrDefault(attr => attr.AttributeType.FullName == typeof(MethodImplAttribute).FullName);
+                    if (sA == null)
+                        method.CustomAttributes.Add(sA = new CustomAttribute(syncCtr));
+
+                    if (sA.ConstructorArguments.Count == 0)
+                        sA.ConstructorArguments.Add(new CustomAttributeArgument(syncEnum, MethodImplOptions.Synchronized));
+                    else
+                        sA.ConstructorArguments[0] = new CustomAttributeArgument(syncEnum, (MethodImplOptions)(short)Convert.ChangeType(sA.ConstructorArguments[0].Value, TypeCode.Int16) | MethodImplOptions.Synchronized);
+
+                }
+                catch (Exception ex) {
 					Console.WriteLine("Exception for method: " + type.FullName + "." + method.Name + ": " + ex);
 				}
 			}

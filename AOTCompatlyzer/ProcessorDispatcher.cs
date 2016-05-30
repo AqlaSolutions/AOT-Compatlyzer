@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using Mono.Cecil;
 
 namespace AotCompatlyzer
@@ -28,7 +29,7 @@ namespace AotCompatlyzer
 			}
 		}
 		
-		public void OnFile(string fileName, string outFileName, bool keepOriginal = false, bool swap = true)
+		public void OnFile(string fileName, string outFileName, string snkFile = null, bool keepOriginal = false, bool swap = true)
 		{
 			Console.WriteLine(" ----- " + fileName + " -----");
 			if(ProcessorDispatcher.Verbosity >= 4)
@@ -59,7 +60,12 @@ namespace AotCompatlyzer
 			if (!AotCompatlyzer.PretendMode) {
 				if (swap) {
 					File.Move (fileName, outFileName);
-					assembly.Write (fileName);
+				    if (!string.IsNullOrEmpty(snkFile))
+				    {
+				        var wp = new WriterParameters() { StrongNameKeyPair = new StrongNameKeyPair(File.ReadAllBytes(snkFile)) };
+				        assembly.Write(fileName, wp);
+				    }
+				    else assembly.Write (fileName);
 					if (!keepOriginal)
 						File.Delete (outFileName);
 				} else {

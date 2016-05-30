@@ -37,7 +37,7 @@ namespace AotCompatlyzer
 			List<string> fileList = new List<string>();
 
 
-			if(args.Length > 0)
+            if(args.Length > 0)
 			{
 				IEnumerable<string> fileListArgs = args;
 				if(args[0].StartsWith ("-", StringComparison.Ordinal))
@@ -80,23 +80,34 @@ namespace AotCompatlyzer
 			Console.WriteLine("Verbosity: " + AotCompatlyzer.Verbosity);
 
 
-			foreach(var fileName in fileList){
-
-				// Blacklist could go here
+		    for (int i = 0; i < fileList.Count; i++)
+		    {
+		        var fileName = fileList[i];
+		        string snkFile = null;
+		        if (i < fileList.Count - 1 && fileList[i + 1].EndsWith(".snk", StringComparison.OrdinalIgnoreCase))
+		        {
+		            i++;
+                    snkFile = fileList[i];
+		        }
+// Blacklist could go here
 #if CUSTOM
 				if(fileName.EndsWith("LionRing.dll")) continue;
 #endif
 
-				try {
-					string outFileName = fileName + "-orig-";
-					while (File.Exists(outFileName)) {
-						outFileName += "-";
-					}
-					d.OnFile(fileName, outFileName);
-				} catch(Exception ex) {
-					Console.WriteLine("Exception processing dll " + fileName + ": " + ex);
-				}
-			}
+		        try
+		        {
+		            string outFileName = fileName + "-orig-";
+		            while (File.Exists(outFileName))
+		            {
+		                outFileName += "-";
+		            }
+		            d.OnFile(fileName, outFileName, snkFile);
+		        }
+		        catch (Exception ex)
+		        {
+		            Console.WriteLine("Exception processing dll " + fileName + ": " + ex);
+		        }
+		    }
 		}
 
 	}
